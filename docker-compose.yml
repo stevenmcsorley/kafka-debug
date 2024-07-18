@@ -1,0 +1,63 @@
+version: "3"
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    command: >
+      bash -c "echo 'Waiting for Zookeeper to be ready...' &&
+               while ! nc -z zookeeper 2181; do sleep 1; done &&
+               echo 'Zookeeper is ready.' &&
+               /etc/confluent/docker/run & 
+               echo 'Waiting for Kafka to start...' &&
+               while ! nc -z localhost 9092; do sleep 1; done &&
+               echo 'Kafka started.' &&
+               kafka-topics --create --if-not-exists --bootstrap-server localhost:9092 --topic test --partitions 1 --replication-factor 1 &&
+               wait"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+    networks:
+      - app-network
+
+  kafkacat:
+    image: edenhill/kafkacat:1.6.0
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["while true; do sleep 30; done;"]
+    environment:
+      KAFKA_BROKER: kafka:9092
+    networks:
+      - app-network
+
+  webapp:
+    build: ./webapp
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    volumes:
+      - ./webapp:/app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

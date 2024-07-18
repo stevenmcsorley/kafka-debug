@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kafka WebSocket Demo</title>
+  </head>
+  <body>
+    <h1>Kafka WebSocket Messages</h1>
+    <input id="messageInput" type="text" placeholder="Enter message" />
+    <button onclick="sendMessage()">Send Message</button>
+    <div id="messages"></div>
+    <script>
+      const ws = new WebSocket("ws://localhost:8080");
+
+      ws.onmessage = function (event) {
+        const messages = document.getElementById("messages");
+        const message = document.createElement("div");
+        message.textContent = "Received: " + event.data;
+        messages.appendChild(message);
+      };
+
+      function sendMessage() {
+        const input = document.getElementById("messageInput");
+        ws.send(input.value);
+        input.value = "";
+      }
+    </script>
+  </body>
+</html>
